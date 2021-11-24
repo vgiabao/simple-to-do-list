@@ -4,20 +4,22 @@ import { CreateTaskDto } from "./dto/create-task.dto";
 import { TaskStatus } from "./task-status.enum";
 import { NotFoundException } from "@nestjs/common";
 import { GetTaskFilterDto } from "./dto/get-task-filter.dto";
+import { User } from "../auth/user.entity";
 
 @EntityRepository(Task)
 export class TaskRepository extends Repository<Task> {
-  async createTask(createTaskDto: CreateTaskDto) {
+  async createTask(createTaskDto: CreateTaskDto, user: User) {
     const { title, description } = createTaskDto;
     const task = this.create({
-      title, description, status: TaskStatus.OPEN
+      title, description, status: TaskStatus.OPEN, user
     });
     await this.save(task);
     return task;
   }
 
-  async getTaskById(id: string) {
-    const task = await this.findOne({ id });
+  async getTaskById(id: string, user: User) {
+    const task = await this.findOne({where: {id, user} });
+
     if (!task) throw new NotFoundException();
     return task;
   }
@@ -35,10 +37,11 @@ export class TaskRepository extends Repository<Task> {
     return task;
   }
 
-  async getTasks(filterDto: GetTaskFilterDto): Promise<Task[]> {
+  async getTasks(filterDto: GetTaskFilterDto, user: User): Promise<Task[]> {
     const { search, status } = filterDto;
     console.log(status);
     const query = this.createQueryBuilder("task");
+    query.andWhere({ user })
     if (status) {
       query.andWhere("task.status = :status", { status });
     }
